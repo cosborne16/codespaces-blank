@@ -64,39 +64,54 @@ plot_station_map('station.csv')
 
 # This is for Part 2.2 to create a graph with just one variable
 import pandas as pd
-import plotly.express as px
+import matplotlib.pyplot as plt
+import seaborn as sns
 
-def plot_station_map_to_html(csv_path='station.csv', output_html='station_map.html'):
-    # Load the CSV
+def plot_gage_height_by_station(csv_path='narrowresult.csv'):
+    # Load the dataset
     df = pd.read_csv(csv_path)
 
-    # Drop duplicates and missing coordinates
-    stations = df.drop_duplicates(subset=['MonitoringLocationIdentifier'])
-    stations = stations.dropna(subset=['LatitudeMeasure', 'LongitudeMeasure'])
+    # Filter: Only gage height measurements in feet
+    is_gage_height = df['CharacteristicName'].str.contains('gage height', case=False, na=False)
+    is_feet = df['ResultMeasure/MeasureUnitCode'].str.lower() == 'ft'
+    df_filtered = df[is_gage_height & is_feet].copy()
 
-    # Create interactive map using scatter_map
-    fig = px.scatter_map(
-        stations,
-        lat='LatitudeMeasure',
-        lon='LongitudeMeasure',
-        color='MonitoringLocationIdentifier',
-        hover_name='MonitoringLocationName',
-        hover_data={'LatitudeMeasure': True, 'LongitudeMeasure': True},
-        zoom=5,
-        height=600,
-        title='Monitoring Sites Map'
-    )
+    # Drop rows with missing critical info
+    df_filtered = df_filtered.dropna(subset=['MonitoringLocationIdentifier', 'ResultMeasureValue', 'ActivityStartDate'])
 
-    # Set open map style and layout
-    fig.update_layout(mapbox_style='open-street-map')
-    fig.update_layout(margin={'r': 0, 't': 30, 'l': 0, 'b': 0})
+    # Convert date to datetime format
+    df_filtered['ActivityStartDate'] = pd.to_datetime(df_filtered['ActivityStartDate'])
 
-    # Export to HTML
-    fig.write_html(output_html)
-    print(f"✅ Map saved to: {output_html}")
+    # Sort for nice line plotting
+    df_filtered = df_filtered.sort_values(by='ActivityStartDate')
 
-# Usage:
-plot_station_map_to_html('station.csv', 'station_map.html')
+    # Set up the pastel theme
+    sns.set(style='whitegrid', palette='pastel')
 
+    # Create figure
+    plt.figure(figsize=(14, 7))
 
+    # Unique pastel colors
+    pastel_colors = sns.color_palette("pastel", n_colors=df_filtered['MonitoringLocationIdentifier'].nunique())
+
+    # Plot each station line
+    for i, (station, group) in enumerate(df_filtered.groupby('MonitoringLocationIdentifier')):
+        plt.plot(group['ActivityStartDate'], group['ResultMeasureValue'],
+                 label=station,
+                 color=pastel_colors[i % len(pastel_colors)],
+                 linewidth=2)
+
+    # Styling
+    plt.title('Gage Height Over Time by Monitoring Station', fontsize=16)
+    plt.xlabel('Date', fontsize=12)
+    plt.ylabel('Gage Height (feet)', fontsize=12)
+    plt.legend(title='Station', bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=9)
+    plt.tight_layout()
+    plt.grid(True, linestyle='--', alpha=0.5)
+
+    # Show the plot
+    plt.show()
+
+# Run the updated function
+plot_gage_height_by_station('narrowresult.csv')
 
