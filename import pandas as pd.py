@@ -63,57 +63,40 @@ def plot_station_map(csv_path='station.csv'):
 plot_station_map('station.csv')
 
 # This is for Part 2.2 to create a graph with just one variable
-
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
+import plotly.express as px
 
-def plot_precipitation_by_station(csv_path='narrowresult.csv'):
-    # Load the dataset
+def plot_station_map_to_html(csv_path='station.csv', output_html='station_map.html'):
+    # Load the CSV
     df = pd.read_csv(csv_path)
 
-    # Filter: Only precipitation measurements in inches
-    is_precip = df['CharacteristicName'].str.contains('precipitation', case=False, na=False)
-    is_inches = df['ResultMeasure/MeasureUnitCode'].str.lower() == 'in'
-    df_filtered = df[is_precip & is_inches].copy()
+    # Drop duplicates and missing coordinates
+    stations = df.drop_duplicates(subset=['MonitoringLocationIdentifier'])
+    stations = stations.dropna(subset=['LatitudeMeasure', 'LongitudeMeasure'])
 
-    # Drop rows with missing critical info
-    df_filtered = df_filtered.dropna(subset=['MonitoringLocationIdentifier', 'ResultMeasureValue', 'ActivityStartDate'])
+    # Create interactive map using scatter_map
+    fig = px.scatter_map(
+        stations,
+        lat='LatitudeMeasure',
+        lon='LongitudeMeasure',
+        color='MonitoringLocationIdentifier',
+        hover_name='MonitoringLocationName',
+        hover_data={'LatitudeMeasure': True, 'LongitudeMeasure': True},
+        zoom=5,
+        height=600,
+        title='Monitoring Sites Map'
+    )
 
-    # Parse dates
-    df_filtered['ActivityStartDate'] = pd.to_datetime(df_filtered['ActivityStartDate'])
+    # Set open map style and layout
+    fig.update_layout(mapbox_style='open-street-map')
+    fig.update_layout(margin={'r': 0, 't': 30, 'l': 0, 'b': 0})
 
-    # Sort by date for consistent line plotting
-    df_filtered = df_filtered.sort_values(by='ActivityStartDate')
+    # Export to HTML
+    fig.write_html(output_html)
+    print(f"✅ Map saved to: {output_html}")
 
-    # Set up cute pastel theme
-    sns.set(style='whitegrid', palette='pastel')
+# Usage:
+plot_station_map_to_html('station.csv', 'station_map.html')
 
-    # Create the figure
-    plt.figure(figsize=(14, 7))
 
-    # Get a list of unique pastel colors (you can add more if you have lots of stations)
-    pastel_colors = sns.color_palette("pastel", n_colors=df_filtered['MonitoringLocationIdentifier'].nunique())
 
-    # Plot each station as a separate line
-    for i, (station, group) in enumerate(df_filtered.groupby('MonitoringLocationIdentifier')):
-        plt.plot(group['ActivityStartDate'], group['ResultMeasureValue'],
-                 label=station,
-                 color=pastel_colors[i % len(pastel_colors)],
-                 linewidth=2)
-
-    # Formatting
-    plt.title('Precipitation Over Time by Monitoring Station', fontsize=16)
-    plt.xlabel('Date', fontsize=12)
-    plt.ylabel('Precipitation (inches)', fontsize=12)
-    plt.legend(title='Station', bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=9)
-    plt.tight_layout()
-    plt.grid(True, linestyle='--', alpha=0.5)
-
-    # Show it
-    plt.show()
-
-# Run the function
-plot_precipitation_by_station('narrowresult.csv')
-
-plt.savefig("precipitation_plot.png")
