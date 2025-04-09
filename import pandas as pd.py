@@ -71,19 +71,18 @@ def plot_gage_height_by_station(csv_path='narrowresult.csv'):
     # Load the dataset
     df = pd.read_csv(csv_path)
 
-    # Debug: print unique values to help verify correct filtering
+    # Debug: print unique values to help verify correct filtering (optional)
     print("Unique Characteristic Names:")
     print(df['CharacteristicName'].unique())
     print("\nUnique Measure Unit Codes:")
     print(df['ResultMeasure/MeasureUnitCode'].unique())
 
-    # Filter: Only gage height measurements in feet
+    # Filter: Only gage height measurements in feet (allow common variations)
     is_gage_height = df['CharacteristicName'].str.contains('gage height', case=False, na=False)
-    # Allow for common variants (e.g., 'ft' or 'feet')
     is_feet = df['ResultMeasure/MeasureUnitCode'].str.lower().isin(['ft', 'feet'])
     df_filtered = df[is_gage_height & is_feet].copy()
 
-    # Debug: check the number of rows after filtering
+    # Debug: check number of rows after filtering
     print("\nNumber of rows after filtering:", df_filtered.shape[0])
     if df_filtered.empty:
         print("No data matched your filtering conditions. Please adjust the filtering criteria.")
@@ -92,19 +91,19 @@ def plot_gage_height_by_station(csv_path='narrowresult.csv'):
     # Drop rows with missing critical info
     df_filtered = df_filtered.dropna(subset=['MonitoringLocationIdentifier', 'ResultMeasureValue', 'ActivityStartDate'])
 
-    # Parse dates
+    # Convert date to datetime
     df_filtered['ActivityStartDate'] = pd.to_datetime(df_filtered['ActivityStartDate'])
 
     # Sort by date for consistent line plotting
     df_filtered = df_filtered.sort_values(by='ActivityStartDate')
 
-    # Set up cute pastel theme
+    # Set up the pastel theme with Seaborn
     sns.set(style='whitegrid', palette='pastel')
 
     # Create the figure
     plt.figure(figsize=(14, 7))
 
-    # Get a list of unique pastel colors (if you have lots of stations, this will cycle through)
+    # Create a list of unique pastel colors for the stations
     pastel_colors = sns.color_palette("pastel", n_colors=df_filtered['MonitoringLocationIdentifier'].nunique())
 
     # Plot each station as a separate line
@@ -122,9 +121,13 @@ def plot_gage_height_by_station(csv_path='narrowresult.csv'):
     plt.tight_layout()
     plt.grid(True, linestyle='--', alpha=0.5)
 
+    # Save the plot as a PNG file
+    plt.savefig("gage_height_plot.png", dpi=300, bbox_inches="tight")
+    print("Saved the plot as gage_height_plot.png")
+
     # Show the plot
     plt.show()
 
-# Run the updated function
+# Run the function
 plot_gage_height_by_station('narrowresult.csv')
 
