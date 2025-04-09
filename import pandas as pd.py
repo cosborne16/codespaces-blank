@@ -71,37 +71,50 @@ def plot_gage_height_by_station(csv_path='narrowresult.csv'):
     # Load the dataset
     df = pd.read_csv(csv_path)
 
+    # Debug: print unique values to help verify correct filtering
+    print("Unique Characteristic Names:")
+    print(df['CharacteristicName'].unique())
+    print("\nUnique Measure Unit Codes:")
+    print(df['ResultMeasure/MeasureUnitCode'].unique())
+
     # Filter: Only gage height measurements in feet
     is_gage_height = df['CharacteristicName'].str.contains('gage height', case=False, na=False)
-    is_feet = df['ResultMeasure/MeasureUnitCode'].str.lower() == 'ft'
+    # Allow for common variants (e.g., 'ft' or 'feet')
+    is_feet = df['ResultMeasure/MeasureUnitCode'].str.lower().isin(['ft', 'feet'])
     df_filtered = df[is_gage_height & is_feet].copy()
+
+    # Debug: check the number of rows after filtering
+    print("\nNumber of rows after filtering:", df_filtered.shape[0])
+    if df_filtered.empty:
+        print("No data matched your filtering conditions. Please adjust the filtering criteria.")
+        return
 
     # Drop rows with missing critical info
     df_filtered = df_filtered.dropna(subset=['MonitoringLocationIdentifier', 'ResultMeasureValue', 'ActivityStartDate'])
 
-    # Convert date to datetime format
+    # Parse dates
     df_filtered['ActivityStartDate'] = pd.to_datetime(df_filtered['ActivityStartDate'])
 
-    # Sort for nice line plotting
+    # Sort by date for consistent line plotting
     df_filtered = df_filtered.sort_values(by='ActivityStartDate')
 
-    # Set up the pastel theme
+    # Set up cute pastel theme
     sns.set(style='whitegrid', palette='pastel')
 
-    # Create figure
+    # Create the figure
     plt.figure(figsize=(14, 7))
 
-    # Unique pastel colors
+    # Get a list of unique pastel colors (if you have lots of stations, this will cycle through)
     pastel_colors = sns.color_palette("pastel", n_colors=df_filtered['MonitoringLocationIdentifier'].nunique())
 
-    # Plot each station line
+    # Plot each station as a separate line
     for i, (station, group) in enumerate(df_filtered.groupby('MonitoringLocationIdentifier')):
         plt.plot(group['ActivityStartDate'], group['ResultMeasureValue'],
                  label=station,
                  color=pastel_colors[i % len(pastel_colors)],
                  linewidth=2)
 
-    # Styling
+    # Formatting
     plt.title('Gage Height Over Time by Monitoring Station', fontsize=16)
     plt.xlabel('Date', fontsize=12)
     plt.ylabel('Gage Height (feet)', fontsize=12)
