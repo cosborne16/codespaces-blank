@@ -67,49 +67,53 @@ plot_station_map('station.csv')
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from matplotlib.dates import DateFormatter
 
-def plot_precipitation_timeseries(csv_path='narrowresult.csv'):
-    # Load data
+def plot_precipitation_by_station(csv_path='narrowresult.csv'):
+    # Load the dataset
     df = pd.read_csv(csv_path)
 
-    # Filter for precipitation in inches
-    is_precip = df['CharacteristicName'].str.contains("precipitation", case=False, na=False)
+    # Filter: Only precipitation measurements in inches
+    is_precip = df['CharacteristicName'].str.contains('precipitation', case=False, na=False)
     is_inches = df['ResultMeasure/MeasureUnitCode'].str.lower() == 'in'
-    filtered = df[is_precip & is_inches]
+    df_filtered = df[is_precip & is_inches].copy()
+
+    # Drop rows with missing critical info
+    df_filtered = df_filtered.dropna(subset=['MonitoringLocationIdentifier', 'ResultMeasureValue', 'ActivityStartDate'])
 
     # Parse dates
-    filtered['ActivityStartDate'] = pd.to_datetime(filtered['ActivityStartDate'])
+    df_filtered['ActivityStartDate'] = pd.to_datetime(df_filtered['ActivityStartDate'])
 
-    # Prepare plot
-    sns.set_theme(style="whitegrid", palette="pastel")
+    # Sort by date for consistent line plotting
+    df_filtered = df_filtered.sort_values(by='ActivityStartDate')
 
-    plt.figure(figsize=(12, 6))
+    # Set up cute pastel theme
+    sns.set(style='whitegrid', palette='pastel')
 
-    # Plot each station
-    for station, group in filtered.groupby("MonitoringLocationIdentifier"):
-        group = group.sort_values("ActivityStartDate")
-        plt.plot(group["ActivityStartDate"], group["ResultMeasureValue"],
-                 label=station, linewidth=2)
+    # Create the figure
+    plt.figure(figsize=(14, 7))
 
-    # Format plot
-    plt.title("Precipitation Over Time by Station", fontsize=16)
-    plt.xlabel("Date")
-    plt.ylabel("Precipitation (inches)")
-    plt.legend(title="Station", bbox_to_anchor=(1.05, 1), loc='upper left')
+    # Get a list of unique pastel colors (you can add more if you have lots of stations)
+    pastel_colors = sns.color_palette("pastel", n_colors=df_filtered['MonitoringLocationIdentifier'].nunique())
+
+    # Plot each station as a separate line
+    for i, (station, group) in enumerate(df_filtered.groupby('MonitoringLocationIdentifier')):
+        plt.plot(group['ActivityStartDate'], group['ResultMeasureValue'],
+                 label=station,
+                 color=pastel_colors[i % len(pastel_colors)],
+                 linewidth=2)
+
+    # Formatting
+    plt.title('Precipitation Over Time by Monitoring Station', fontsize=16)
+    plt.xlabel('Date', fontsize=12)
+    plt.ylabel('Precipitation (inches)', fontsize=12)
+    plt.legend(title='Station', bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=9)
     plt.tight_layout()
-    plt.grid(True)
+    plt.grid(True, linestyle='--', alpha=0.5)
 
-    # Show plot
+    # Show it
     plt.show()
 
 # Run the function
-plot_precipitation_timeseries('narrowresult.csv')
+plot_precipitation_by_station('narrowresult.csv')
 
-
-
-
-
-
-
-
+plt.savefig("precipitation_plot.png")
