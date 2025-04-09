@@ -67,7 +67,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-def plot_gage_height_by_station(csv_path='narrowresult.csv'):
+def plot_precipitation_by_station(csv_path='narrowresult.csv'):
     # Load the dataset
     df = pd.read_csv(csv_path)
 
@@ -77,33 +77,33 @@ def plot_gage_height_by_station(csv_path='narrowresult.csv'):
     print("\nUnique Measure Unit Codes:")
     print(df['ResultMeasure/MeasureUnitCode'].unique())
 
-    # Filter: Only gage height measurements in feet (allow common variations)
-    is_gage_height = df['CharacteristicName'].str.contains('gage height', case=False, na=False)
-    is_feet = df['ResultMeasure/MeasureUnitCode'].str.lower().isin(['ft', 'feet'])
-    df_filtered = df[is_gage_height & is_feet].copy()
+    # Filter: Only precipitation measurements in inches (allow for common variants)
+    is_precip = df['CharacteristicName'].str.contains('precipitation', case=False, na=False)
+    is_inches = df['ResultMeasure/MeasureUnitCode'].str.lower().isin(['in', 'inches'])
+    df_filtered = df[is_precip & is_inches].copy()
 
-    # Debug: check number of rows after filtering
+    # Debug: check the number of rows after filtering
     print("\nNumber of rows after filtering:", df_filtered.shape[0])
     if df_filtered.empty:
-        print("No data matched your filtering conditions. Please adjust the filtering criteria.")
+        print("No data matched your filtering conditions for precipitation. Please adjust the filtering criteria.")
         return
 
     # Drop rows with missing critical info
     df_filtered = df_filtered.dropna(subset=['MonitoringLocationIdentifier', 'ResultMeasureValue', 'ActivityStartDate'])
 
-    # Convert date to datetime
+    # Convert the date strings to datetime objects
     df_filtered['ActivityStartDate'] = pd.to_datetime(df_filtered['ActivityStartDate'])
 
     # Sort by date for consistent line plotting
     df_filtered = df_filtered.sort_values(by='ActivityStartDate')
 
-    # Set up the pastel theme with Seaborn
+    # Set up the pastel theme using Seaborn
     sns.set(style='whitegrid', palette='pastel')
 
     # Create the figure
     plt.figure(figsize=(14, 7))
 
-    # Create a list of unique pastel colors for the stations
+    # Generate a list of unique pastel colors (one for each unique station)
     pastel_colors = sns.color_palette("pastel", n_colors=df_filtered['MonitoringLocationIdentifier'].nunique())
 
     # Plot each station as a separate line
@@ -113,21 +113,22 @@ def plot_gage_height_by_station(csv_path='narrowresult.csv'):
                  color=pastel_colors[i % len(pastel_colors)],
                  linewidth=2)
 
-    # Formatting
-    plt.title('Gage Height Over Time by Monitoring Station', fontsize=16)
+    # Formatting the plot
+    plt.title('Precipitation Over Time by Monitoring Station', fontsize=16)
     plt.xlabel('Date', fontsize=12)
-    plt.ylabel('Gage Height (feet)', fontsize=12)
+    plt.ylabel('Precipitation (inches)', fontsize=12)
     plt.legend(title='Station', bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=9)
     plt.tight_layout()
     plt.grid(True, linestyle='--', alpha=0.5)
 
     # Save the plot as a PNG file
-    plt.savefig("gage_height_plot.png", dpi=300, bbox_inches="tight")
-    print("Saved the plot as gage_height_plot.png")
+    plt.savefig("precipitation_plot.png", dpi=300, bbox_inches="tight")
+    print("Saved the plot as precipitation_plot.png")
 
     # Show the plot
     plt.show()
 
 # Run the function
-plot_gage_height_by_station('narrowresult.csv')
+plot_precipitation_by_station('narrowresult.csv')
+
 
